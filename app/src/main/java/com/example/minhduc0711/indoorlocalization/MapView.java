@@ -3,10 +3,11 @@ package com.example.minhduc0711.indoorlocalization;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.PorterDuff;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -25,6 +26,8 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
 
     private final static int FRAMES_PER_SECOND = 30;
     private final static int SKIP_TICKS = 1000 / FRAMES_PER_SECOND;
+    private final static float X_MAX = 20;
+    private final static float Y_MAX = 40;
 
     private WifiManager mWifiManager;
     private PositionIndicator mPositionIndicator;
@@ -38,8 +41,8 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
     private PredictiveModel mPredictiveModel;
     private JSONObject trainIndexDict;
 
-    public MapView(Context context) {
-        super(context);
+    public MapView(Context context, AttributeSet attrs) {
+        super(context, attrs);
         setFocusable(true);
 
         // Get SurfaceHolder object.
@@ -54,6 +57,23 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
         mPredictiveModel = new PredictiveModel(context, MODEL_PATH);
         trainIndexDict = Utils.loadJSONFromAsset(TRAIN_IDX_DICT_PATH, context);
     }
+
+//    public MapView(Context context) {
+//        super(context);
+//        setFocusable(true);
+//
+//        // Get SurfaceHolder object.
+//        mSurfaceHolder = getHolder();
+//        // Add current object as the callback listener.
+//        mSurfaceHolder.addCallback(this);
+//
+//        arrowIcon = drawableToBitmap(getResources().getDrawable(R.drawable.ic_navigation_arrow));
+//        mPositionIndicator = new PositionIndicator();
+//        mWifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+//
+//        mPredictiveModel = new PredictiveModel(context, MODEL_PATH);
+//        trainIndexDict = Utils.loadJSONFromAsset(TRAIN_IDX_DICT_PATH, context);
+//    }
 
     /**
      * Converts the wifi status to a feature vector
@@ -78,15 +98,17 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
     }
 
     /**
-     * Predicts the position then update the indicator
+     * Predicts the position then updates the indicator
      */
     private void updatePositionIndicator() {
         if (mWifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED) {
             List<ScanResult> wifiResults = mWifiManager.getScanResults();
             float[] input = toFeatureVector(wifiResults);
             float[] output = mPredictiveModel.predict(input);
-            Log.d("output", Arrays.toString(output));
-            mPositionIndicator.update(Math.round(output[0]), Math.round(output[1]));
+//            Log.d("output", Arrays.toString(output));
+
+            // INVERTED X AND Y !!!!
+            mPositionIndicator.update(Math.round(output[1]), Math.round(output[0]));
         }
     }
 
@@ -105,8 +127,8 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
 
         mCanvas = mSurfaceHolder.lockCanvas();
 
-        mCanvas.drawColor(Color.WHITE);
-        mPositionIndicator.draw(mCanvas, arrowIcon);
+        mCanvas.drawColor(0, PorterDuff.Mode.CLEAR);
+        mPositionIndicator.draw(mCanvas, arrowIcon, getWidth(), getHeight());
 
         mSurfaceHolder.unlockCanvasAndPost(mCanvas);
     }
@@ -156,8 +178,8 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
         private int angle;
 
         public void update(int xPos, int yPos) {
-            this.xPos = xPos * 50;
-            this.yPos = yPos * 50;
+            this.xPos = xPos;
+            this.yPos = yPos;
         }
 
         public int getAngle() {
@@ -168,13 +190,21 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
             this.angle = angle;
         }
 
-        public void draw(Canvas canvas, Bitmap icon) {
+        public void draw(Canvas canvas, Bitmap icon, float viewWidth, float viewHeight) {
+            float[] newCoordinates = scaleCoordinates(viewWidth, viewHeight);
             Matrix matrix = new Matrix();
             matrix.reset();
             matrix.postTranslate(-icon.getWidth() / 2, -icon.getHeight() / 2); // Centers image
             matrix.postRotate(angle);
-            matrix.postTranslate(xPos, yPos);
+            matrix.postTranslate(newCoordinates[0], newCoordinates[1]);
             canvas.drawBitmap(icon, matrix, null);
+        }
+
+        private float[] scaleCoordinates(float width, float height) {
+            float[] res = new float[2];
+            res[0] = (xPos / X_MAX) * width;
+            res[1] = (yPos / Y_MAX) * height;
+            return res;
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.example.minhduc0711.indoorlocalization;
 
 import android.content.pm.ActivityInfo;
+import android.graphics.PixelFormat;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -11,7 +12,6 @@ import android.widget.FrameLayout;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
     private MapView mMapView;
-    private FrameLayout mFrameLayout;
 
     private SensorManager mSensorManager;
 
@@ -21,9 +21,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         setContentView(R.layout.activity_main);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
-        mFrameLayout = findViewById(R.id.frame_layout_main);
-        mMapView = new MapView(getApplicationContext());
-        mFrameLayout.addView(mMapView);
+        mMapView = findViewById(R.id.map_view);
+        mMapView.setZOrderOnTop(true);
+        mMapView.getHolder().setFormat(PixelFormat.TRANSPARENT);
+//        mMapView = new MapView(getApplicationContext());
+//        mFrameLayout.addView(mMapView);
 
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
     }
@@ -49,6 +51,5 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
     }
 }
