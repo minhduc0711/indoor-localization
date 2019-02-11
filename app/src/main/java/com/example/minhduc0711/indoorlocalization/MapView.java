@@ -22,10 +22,8 @@ import static com.example.minhduc0711.indoorlocalization.Utils.drawableToBitmap;
 
 public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
     private static final String TRAIN_IDX_DICT_PATH = "train_idx_dict.json";
-    private static final String MODEL_PATH = "model.pb";
+    private static final String MODEL_NAME = "poly";
 
-    private final static int FRAMES_PER_SECOND = 30;
-    private final static int SKIP_TICKS = 1000 / FRAMES_PER_SECOND;
     private final static float X_MAX = 20;
     private final static float Y_MAX = 40;
 
@@ -54,7 +52,7 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
         mPositionIndicator = new PositionIndicator();
         mWifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
 
-        mPredictiveModel = new PredictiveModel(context, MODEL_PATH);
+        mPredictiveModel = new PredictiveModel(context, PredictiveModel.PMML_FILE_EXT, MODEL_NAME);
         trainIndexDict = Utils.loadJSONFromAsset(TRAIN_IDX_DICT_PATH, context);
     }
 
@@ -71,7 +69,7 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
 //        mPositionIndicator = new PositionIndicator();
 //        mWifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
 //
-//        mPredictiveModel = new PredictiveModel(context, MODEL_PATH);
+//        mPredictiveModel = new PredictiveModel(context, MODEL_NAME);
 //        trainIndexDict = Utils.loadJSONFromAsset(TRAIN_IDX_DICT_PATH, context);
 //    }
 
@@ -105,7 +103,7 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
             List<ScanResult> wifiResults = mWifiManager.getScanResults();
             float[] input = toFeatureVector(wifiResults);
             float[] output = mPredictiveModel.predict(input);
-//            Log.d("output", Arrays.toString(output));
+            Log.d("output", Arrays.toString(output));
 
             // INVERTED X AND Y !!!!
             mPositionIndicator.update(Math.round(output[1]), Math.round(output[0]));
@@ -164,8 +162,8 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
             {
                 try {
                     Thread.sleep(200 - deltaTime);
-                }catch (InterruptedException ex)
-                {
+                }
+                catch (InterruptedException ex) {
                     Log.e("THREAD", ex.getMessage());
                 }
             }
