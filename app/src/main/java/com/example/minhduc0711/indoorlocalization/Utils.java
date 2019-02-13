@@ -27,7 +27,7 @@ public class Utils {
     }
 
     public static JSONObject loadJSONFromAsset(String fname, Context context) {
-        String json = null;
+        String json;
         try {
             InputStream is = context.getAssets().open(fname);
             int size = is.available();
