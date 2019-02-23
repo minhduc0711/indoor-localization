@@ -16,10 +16,9 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Arrays;
 import java.util.List;
 
-public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
+public class MapView extends SurfaceView implements SurfaceHolder.Callback {
     private static final String TRAIN_IDX_DICT_PATH = "cleaned_idx_dict.json";
     private static final String MODEL_NAME = "model";
 
@@ -48,10 +47,17 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
         mSurfaceHolder.addCallback(this);
 
         mPositionIndicator = new PositionIndicator();
+
         mWifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+        if (mWifiManager.getWifiState() == WifiManager.WIFI_STATE_DISABLED) {
+            Toast.makeText(getContext(), "Enabling Wifi...", Toast.LENGTH_LONG).show();
+            mWifiManager.setWifiEnabled(true);
+        }
 
         mPredictiveModel = new PredictiveModel(context, PredictiveModel.PB_FILE_EXT, MODEL_NAME);
         trainIndexDict = Utils.loadJSONFromAsset(TRAIN_IDX_DICT_PATH, context);
+
+        mDrawThread = new DrawThread();
     }
 
     /**
@@ -82,11 +88,19 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
     private void updatePositionIndicator() {
         if (mWifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED) {
             List<ScanResult> wifiResults = mWifiManager.getScanResults();
+
+            long startTime = System.nanoTime();
             float[] input = toFeatureVector(wifiResults);
             float[] output = mPredictiveModel.predict(input);
-            Log.d("input", Arrays.toString(input));
-            Log.d("output", Arrays.toString(output));
+            long endTime = System.nanoTime();
 
+            long duration = (endTime - startTime);
+//            Log.d("output", Arrays.toString(output));
+
+//            Random r = new Random();
+//            int x = r.nextInt((int) X_MAX);
+//            Random r1 = new Random();
+//            int y = r1.nextInt((int) Y_MAX);
             mPositionIndicator.update(Math.round(output[0]), Math.round(output[1]));
         }
     }
@@ -102,19 +116,11 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
      * Performs the actual drawing on the SurfaceView
      */
     private void doDraw() {
-        updatePositionIndicator();
 
-        mCanvas = mSurfaceHolder.lockCanvas();
-
-        mCanvas.drawColor(0, PorterDuff.Mode.CLEAR);
-        mPositionIndicator.draw(mCanvas, getWidth(), getHeight());
-
-        mSurfaceHolder.unlockCanvasAndPost(mCanvas);
     }
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        mDrawThread = new Thread(this);
         threadRunning = true;
         mDrawThread.start();
     }
@@ -129,23 +135,39 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
         threadRunning = false;
     }
 
-    @Override
-    public void run() {
-        while (threadRunning) {
-            long startTime = System.currentTimeMillis();
+    private class DrawThread extends Thread {
+        @Override
+        public void run() {
+            while (threadRunning) {
+                long startTime = System.currentTimeMillis();
 
-            doDraw();
+                updatePositionIndicator();
 
-            long endTime = System.currentTimeMillis();
-            long deltaTime = endTime - startTime;
+                mCanvas = mSurfaceHolder.lockCanvas();
 
-            if(deltaTime < 200)
-            {
-                try {
-                    Thread.sleep(200 - deltaTime);
-                }
-                catch (InterruptedException ex) {
-                    Log.e("THREAD", ex.getMessage());
+                mCanvas.drawColor(0, PorterDuff.Mode.CLEAR);
+                mPositionIndicator.draw(mCanvas, getWidth(), getHeight());
+
+                Paint textPaint = new Paint(Color.BLACK);
+                textPaint.setTextSize(30);
+                textPaint.setFakeBoldText(true);
+                mCanvas.drawText("x pos: " + mPositionIndicator.xPos, 20, 50, textPaint);
+                mCanvas.drawText("y pos: " + mPositionIndicator.yPos, 20, 90, textPaint);
+                mCanvas.drawText("Orientation: " + mDeviceOrientation, 20, 140, textPaint);
+
+                mSurfaceHolder.unlockCanvasAndPost(mCanvas);
+
+                long endTime = System.currentTimeMillis();
+                long deltaTime = endTime - startTime;
+
+                if(deltaTime < 200)
+                {
+                    try {
+                        Thread.sleep(200 - deltaTime);
+                    }
+                    catch (InterruptedException ex) {
+                        Log.e("THREAD", ex.getMessage());
+                    }
                 }
             }
         }
@@ -170,13 +192,6 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback, Runn
         public void draw(Canvas canvas, float viewWidth, float viewHeight) {
             float[] newCoordinates = scaleCoordinates(viewWidth, viewHeight);
             canvas.drawCircle(newCoordinates[0], newCoordinates[1], 15, new Paint());
-
-//            Matrix matrix = new Matrix();
-//            matrix.reset();
-//            matrix.postTranslate(-icon.getWidth() / 2, -icon.getHeight() / 2); // Centers image
-//            matrix.postRotate(angle);
-//            matrix.postTranslate(newCoordinates[0], newCoordinates[1]);
-//            canvas.drawBitmap(icon, matrix, null);
         }
 
         private float[] scaleCoordinates(float width, float height) {
