@@ -13,7 +13,7 @@
         <ImageView
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:background="@drawable/hallway_2"/>
+            android:background="@drawable/hallway"/>
 
         <com.example.minhduc0711.indoorlocalization.MapView
             android:id="@+id/map_view"
