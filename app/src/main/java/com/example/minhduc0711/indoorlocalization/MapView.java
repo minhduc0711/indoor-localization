@@ -13,6 +13,10 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.Toast;
 
+import com.example.minhduc0711.indoorlocalization.models.PredictiveModel;
+import com.example.minhduc0711.indoorlocalization.models.ScikitModel;
+import com.example.minhduc0711.indoorlocalization.models.TensorflowModel;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -20,7 +24,6 @@ import java.util.List;
 
 public class MapView extends SurfaceView implements SurfaceHolder.Callback {
     private static final String TRAIN_IDX_DICT_PATH = "cleaned_idx_dict.json";
-    private static final String MODEL_NAME = "model";
 
     private final static float X_MAX = 20;
     private final static float Y_MAX = 40;
@@ -48,16 +51,21 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback {
 
         mPositionIndicator = new PositionIndicator();
 
-        mWifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+        mWifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (mWifiManager.getWifiState() == WifiManager.WIFI_STATE_DISABLED) {
             Toast.makeText(getContext(), "Enabling Wifi...", Toast.LENGTH_LONG).show();
             mWifiManager.setWifiEnabled(true);
         }
 
-        mPredictiveModel = new PredictiveModel(context, PredictiveModel.PB_FILE_EXT, MODEL_NAME);
+        initializeModel(new TensorflowModel("neural_net.pb", context));
+//        initializeModel(new ScikitModel("decision_tree_x.pmml.ser", "decision_tree_y.pmml.ser", context));
         trainIndexDict = Utils.loadJSONFromAsset(TRAIN_IDX_DICT_PATH, context);
 
         mDrawThread = new DrawThread();
+    }
+
+    public void initializeModel(PredictiveModel newModel) {
+        mPredictiveModel = newModel;
     }
 
     /**
@@ -89,18 +97,9 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback {
         if (mWifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED) {
             List<ScanResult> wifiResults = mWifiManager.getScanResults();
 
-            long startTime = System.nanoTime();
             float[] input = toFeatureVector(wifiResults);
             float[] output = mPredictiveModel.predict(input);
-            long endTime = System.nanoTime();
 
-            long duration = (endTime - startTime);
-//            Log.d("output", Arrays.toString(output));
-
-//            Random r = new Random();
-//            int x = r.nextInt((int) X_MAX);
-//            Random r1 = new Random();
-//            int y = r1.nextInt((int) Y_MAX);
             mPositionIndicator.update(Math.round(output[0]), Math.round(output[1]));
         }
     }
@@ -110,13 +109,6 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback {
      */
     public void updateOrientation(int angle) {
         mDeviceOrientation = angle;
-    }
-
-    /**
-     * Performs the actual drawing on the SurfaceView
-     */
-    private void doDraw() {
-
     }
 
     @Override
@@ -160,7 +152,7 @@ public class MapView extends SurfaceView implements SurfaceHolder.Callback {
                 long endTime = System.currentTimeMillis();
                 long deltaTime = endTime - startTime;
 
-                if(deltaTime < 200)
+                if (deltaTime < 200)
                 {
                     try {
                         Thread.sleep(200 - deltaTime);

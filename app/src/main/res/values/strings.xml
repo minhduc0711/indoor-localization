@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">IndoorLocalization</string>
     <string-array name="models_array">
-        <item>Neural net</item>
-        <item>Polynomial regression</item>
+        <item>Neural network</item>
+        <item>Decision tree</item>
     </string-array>
 </resources>
